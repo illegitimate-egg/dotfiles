@@ -9,6 +9,7 @@ end
 
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
+vim.cmd [[set hidden]]
 
 require('packer').startup(function(use)
   -- Package manager
@@ -46,43 +47,56 @@ require('packer').startup(function(use)
     after = 'nvim-treesitter',
   }
 
+  use {
+    'Djancyp/better-comments.nvim',
+    config = [[require('better-comment').Setup()]]
+  }
+
+  use 'nvim-tree/nvim-web-devicons'
+  use 'mfussenegger/nvim-dap'
+  use {
+    "rcarriga/nvim-dap-ui",
+    requires = {"mfussenegger/nvim-dap"},
+    config = [[require("dapui").setup()]]
+  }
+  use 'rcarriga/nvim-notify'
+
   -- Git related plugins
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
   use 'lewis6991/gitsigns.nvim'
 
-  use 'navarasu/onedark.nvim' -- Theme inspired by Atom
+  -- use 'navarasu/onedark.nvim' -- Theme inspired by Atom RIP
   use 'ellisonleao/gruvbox.nvim'
-  use {
-    "catppuccin/nvim", as = "catppuccin",
-    require("catppuccin").setup({flavour = "mocha"})
-  }
-  use {
-    'akinsho/bufferline.nvim', 
-    tag= "v3.*", requires = 'nvim-tree/nvim-web-devicons',
-    require("bufferline").setup{}
-  }
-  use {
-    'startup-nvim/startup.nvim',
-    requires = {'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim'},
-    config = function()
-      require"startup".setup()
-    end
-  }
+  --use 'ayu-theme/ayu-vim'
+  --use {
+  --  "uloco/bluloco.nvim",
+  --  requires = { 'rktjmp/lush.nvim' }
+  --}
 
   use {
     'nvim-tree/nvim-tree.lua',
     requires = {
       'nvim-tree/nvim-web-devicons',
     },
-    require("nvim-tree").setup()
+    config = [[require("nvim-tree").setup()]]
   }
 
+  use {
+    "akinsho/toggleterm.nvim",
+    tag = '*',
+    config = [[require("toggleterm").setup{}]]
+  }
 
   use 'nvim-lualine/lualine.nvim' -- Fancier statusline
   use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
   use 'numToStr/Comment.nvim' -- "gc" to comment visual regions/lines
   use 'tpope/vim-sleuth' -- Detect tabstop and shiftwidth automatically
+
+  use {
+    "SmiteshP/nvim-navic",
+    requires = "neovim/nvim-lspconfig"
+  }
 
   -- Fuzzy Finder (files, lsp, etc)
   use { 'nvim-telescope/telescope.nvim', branch = '0.1.x', requires = { 'nvim-lua/plenary.nvim' } }
@@ -150,7 +164,11 @@ vim.wo.signcolumn = 'yes'
 
 -- Set colorscheme
 vim.o.termguicolors = true
-vim.cmd [[colorscheme catppuccin]]
+-- vim.cmd [[let ayucolor="dark"]]
+require("gruvbox").setup({
+  contrast = "hard"
+})
+vim.cmd [[colorscheme gruvbox]]
 
 -- Set completeopt to have a better completion experience
 vim.o.completeopt = 'menuone,noselect'
@@ -181,19 +199,51 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   pattern = '*',
 })
 
--- Set lualine as statusline
--- See `:help lualine.txt`
-require('lualine').setup {
-  options = {
-    icons_enabled = true,
-    theme = 'catppuccin',
-    component_separators = '|',
-    section_separators = {left = '', right = ''},
+local navic = require("nvim-navic")
+
+navic.setup {
+icons = {
+    File = ' ',
+    Module = ' ',
+    Namespace = ' ',
+    Package = ' ',
+    Class = ' ',
+    Method = ' ',
+    Property = ' ',
+    Field = ' ',
+    Constructor = ' ',
+    Enum = ' ',
+    Interface = ' ',
+    Function = ' ',
+    Variable = ' ',
+    Constant = ' ',
+    String = ' ',
+    Number = ' ',
+    Boolean = ' ',
+    Array = ' ',
+    Object = ' ',
+    Key = ' ',
+    Null = ' ',
+    EnumMember = ' ',
+    Struct = ' ',
+    Event = ' ',
+    Operator = ' ',
+    TypeParameter = ' '
   },
+  highlight = true,
+}
+
+require("lspconfig").clangd.setup {
+    on_attach = function(client, bufnr)
+        navic.attach(client, bufnr)
+    end
 }
 
 -- Enable Comment.nvim
 require('Comment').setup()
+
+vim.notify = require("notify")
+require('notify').setup({})
 
 -- Enable `lukas-reineke/indent-blankline.nvim`
 -- See `:help indent_blankline.txt`
@@ -246,6 +296,7 @@ vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags, { desc
 vim.keymap.set('n', '<leader>sw', require('telescope.builtin').grep_string, { desc = '[S]earch current [W]ord' })
 vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
 vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
+vim.keymap.set('n', '<leader>du', require('dapui').toggle, { desc = 'Start a dap session using [D]ap-[U]i' })
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
@@ -318,7 +369,8 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist)
 
 -- LSP settings.
 --  This function gets run when an LSP connects to a particular buffer.
-local on_attach = function(_, bufnr)
+local on_attach = function(client, bufnr)
+  navic.attach(client, bufnr)
   -- NOTE: Remember that lua is a real programming language, and as such it is possible
   -- to define small helper and utility functions so you don't have to repeat yourself
   -- many times.
@@ -367,7 +419,7 @@ end
 --  Add any additional override configuration in the following tables. They will be passed to
 --  the `settings` field of the server config. You must look up that documentation yourself.
 local servers = {
-  -- clangd = {},
+  clangd = {},
   -- gopls = {},
   -- pyright = {},
   -- rust_analyzer = {},
@@ -382,7 +434,9 @@ local servers = {
 }
 
 -- Setup neovim lua configuration
-require('neodev').setup()
+require('neodev').setup({
+  library = { plugins = { "nvim-dap-ui" }, types = true }
+})
 --
 -- nvim-cmp supports additional completion capabilities, so broadcast that to servers
 local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -409,7 +463,7 @@ mason_lspconfig.setup_handlers {
 }
 
 -- Turn on lsp status information
-require('fidget').setup()
+--require('fidget').setup()
 
 -- nvim-cmp setup
 local cmp = require 'cmp'
@@ -454,5 +508,25 @@ cmp.setup {
   },
 }
 
+-- Set lualine as statusline
+-- See `:help lualine.txt`
+require('lualine').setup {
+  options = {
+    icons_enabled = true,
+    theme = 'auto',
+    component_separators = '|',
+    section_separators = {left = '', right = ''},
+  },
+  sections = {
+    lualine_a = {'mode'},
+    lualine_b = {'branch', 'diff', 'diagnostics'},
+    lualine_c = {'filename', { navic.get_location, cond = navic.is_available }},
+    lualine_x = {'encoding', 'fileformat', 'filetype'},
+    lualine_y = {'progress'},
+    lualine_z = {'location'}
+  },
+}
+
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
+
