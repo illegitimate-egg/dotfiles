@@ -47,10 +47,10 @@ require('packer').startup(function(use)
     after = 'nvim-treesitter',
   }
 
-  use {
-    'Djancyp/better-comments.nvim',
-    config = [[require('better-comment').Setup()]]
-  }
+  -- use {
+  --   'Djancyp/better-comments.nvim',
+  --   config = [[require('better-comment').Setup()]]
+  --}
 
   use 'nvim-tree/nvim-web-devicons'
   use 'mfussenegger/nvim-dap'
@@ -65,9 +65,10 @@ require('packer').startup(function(use)
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
   use 'lewis6991/gitsigns.nvim'
-
+  use { "arturgoms/moonbow.nvim" }
   -- use 'navarasu/onedark.nvim' -- Theme inspired by Atom RIP
-  use 'ellisonleao/gruvbox.nvim'
+  -- use 'ellisonleao/gruvbox.nvim'
+
   --use 'ayu-theme/ayu-vim'
   --use {
   --  "uloco/bluloco.nvim",
@@ -88,7 +89,7 @@ require('packer').startup(function(use)
     config = [[require("toggleterm").setup{}]]
   }
 
-  use 'nvim-lualine/lualine.nvim' -- Fancier statusline
+  use 'arturgoms/lualine.nvim' -- Fancier statusline
   use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
   use 'numToStr/Comment.nvim' -- "gc" to comment visual regions/lines
   use 'tpope/vim-sleuth' -- Detect tabstop and shiftwidth automatically
@@ -165,10 +166,10 @@ vim.wo.signcolumn = 'yes'
 -- Set colorscheme
 vim.o.termguicolors = true
 -- vim.cmd [[let ayucolor="dark"]]
-require("gruvbox").setup({
-  contrast = "hard"
-})
-vim.cmd [[colorscheme gruvbox]]
+-- require("gruvbox").setup({
+--   contrast = "hard"
+-- })
+vim.cmd [[colorscheme moonbow]]
 
 -- Set completeopt to have a better completion experience
 vim.o.completeopt = 'menuone,noselect'
@@ -422,10 +423,10 @@ local servers = {
   clangd = {},
   -- gopls = {},
   -- pyright = {},
-  -- rust_analyzer = {},
+  rust_analyzer = {},
   -- tsserver = {},
 
-  sumneko_lua = {
+  lua_ls = {
     Lua = {
       workspace = { checkThirdParty = false },
       telemetry = { enable = false },
@@ -463,7 +464,7 @@ mason_lspconfig.setup_handlers {
 }
 
 -- Turn on lsp status information
---require('fidget').setup()
+-- require('fidget').setup()
 
 -- nvim-cmp setup
 local cmp = require 'cmp'
@@ -513,7 +514,7 @@ cmp.setup {
 require('lualine').setup {
   options = {
     icons_enabled = true,
-    theme = 'auto',
+    theme = 'moonbow',
     component_separators = '|',
     section_separators = {left = '', right = ''},
   },
@@ -526,6 +527,106 @@ require('lualine').setup {
     lualine_z = {'location'}
   },
 }
+
+-- Utility functions shared between progress reports for LSP and DAP
+
+local client_notifs = {}
+
+local function get_notif_data(client_id, token)
+ if not client_notifs[client_id] then
+   client_notifs[client_id] = {}
+ end
+
+ if not client_notifs[client_id][token] then
+   client_notifs[client_id][token] = {}
+ end
+
+ return client_notifs[client_id][token]
+end
+
+
+local spinner_frames = { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" }
+
+local function update_spinner(client_id, token)
+ local notif_data = get_notif_data(client_id, token)
+
+ if notif_data.spinner then
+   local new_spinner = (notif_data.spinner + 1) % #spinner_frames
+   notif_data.spinner = new_spinner
+
+   notif_data.notification = vim.notify(nil, nil, {
+     hide_from_history = true,
+     icon = spinner_frames[new_spinner],
+     replace = notif_data.notification,
+   })
+
+   vim.defer_fn(function()
+     update_spinner(client_id, token)
+   end, 100)
+ end
+end
+
+local function format_title(title, client_name)
+ return client_name .. (#title > 0 and ": " .. title or "")
+end
+
+local function format_message(message, percentage)
+ return (percentage and percentage .. "%\t" or "") .. (message or "")
+end
+
+-- LSP integration
+-- Make sure to also have the snippet with the common helper functions in your config!
+
+vim.lsp.handlers["$/progress"] = function(_, result, ctx)
+ local client_id = ctx.client_id
+
+ local val = result.value
+
+ if not val.kind then
+   return
+ end
+
+ local notif_data = get_notif_data(client_id, result.token)
+
+ if val.kind == "begin" then
+   local message = format_message(val.message, val.percentage)
+
+   notif_data.notification = vim.notify(message, "info", {
+     title = format_title(val.title, vim.lsp.get_client_by_id(client_id).name),
+     icon = spinner_frames[1],
+     timeout = false,
+     hide_from_history = false,
+   })
+
+   notif_data.spinner = 1
+   update_spinner(client_id, result.token)
+ elseif val.kind == "report" and notif_data then
+   notif_data.notification = vim.notify(format_message(val.message, val.percentage), "info", {
+     replace = notif_data.notification,
+     hide_from_history = false,
+   })
+ elseif val.kind == "end" and notif_data then
+   notif_data.notification =
+     vim.notify(val.message and format_message(val.message) or "Complete", "info", {
+       icon = "",
+       replace = notif_data.notification,
+       timeout = 3000,
+     })
+
+   notif_data.spinner = nil
+ end
+end
+
+-- table from lsp severity to vim severity.
+local severity = {
+  "error",
+  "warn",
+  "info",
+  "info", -- map both hint and info to info?
+}
+vim.lsp.handlers["window/showMessage"] = function(err, method, params, client_id)
+             vim.notify(method.message, severity[params.type])
+end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
