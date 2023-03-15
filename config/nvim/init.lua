@@ -7,6 +7,11 @@ if vim.fn.empty(vim.fn.glob(install_path)) > 0 then
   vim.cmd [[packadd packer.nvim]]
 end
 
+vim.g.python3_host_prog = '/usr/bin/python3'
+-- vim.g.UltiSnipsExpandTrigger       = '<Tab>'
+-- vim.g.UltiSnipsJumpForwardTrigger  = '<Tab>'
+-- vim.g.UltiSnipsJumpBackwardTrigger = '<S-Tab>'
+
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 vim.cmd [[set hidden]]
@@ -47,6 +52,11 @@ require('packer').startup(function(use)
     after = 'nvim-treesitter',
   }
 
+  -- LaTeX support
+  use 'lervag/vimtex'
+  use 'tpope/vim-dispatch'
+  use { "barreiroleo/ltex-extra.nvim" }
+
   -- use {
   --   'Djancyp/better-comments.nvim',
   --   config = [[require('better-comment').Setup()]]
@@ -65,8 +75,8 @@ require('packer').startup(function(use)
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
   use 'lewis6991/gitsigns.nvim'
-  use { "arturgoms/moonbow.nvim" }
-  -- use 'navarasu/onedark.nvim' -- Theme inspired by Atom RIP
+  -- use { "arturgoms/moonbow.nvim" }
+  use 'navarasu/onedark.nvim' -- Theme inspired by Atom RIP
   -- use 'ellisonleao/gruvbox.nvim'
 
   --use 'ayu-theme/ayu-vim'
@@ -169,7 +179,7 @@ vim.o.termguicolors = true
 -- require("gruvbox").setup({
 --   contrast = "hard"
 -- })
-vim.cmd [[colorscheme moonbow]]
+vim.cmd [[colorscheme onedark]]
 
 -- Set completeopt to have a better completion experience
 vim.o.completeopt = 'menuone,noselect'
@@ -234,12 +244,6 @@ icons = {
   highlight = true,
 }
 
-require("lspconfig").clangd.setup {
-    on_attach = function(client, bufnr)
-        navic.attach(client, bufnr)
-    end
-}
-
 -- Enable Comment.nvim
 require('Comment').setup()
 
@@ -298,6 +302,16 @@ vim.keymap.set('n', '<leader>sw', require('telescope.builtin').grep_string, { de
 vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
 vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
 vim.keymap.set('n', '<leader>du', require('dapui').toggle, { desc = 'Start a dap session using [D]ap-[U]i' })
+
+local dap = require('dap')
+dap.configurations.c = {
+	{
+		type = 'executable';
+		request = 'launch';
+		name = "Launch file";
+		program = "./main";
+	},
+}
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
@@ -426,6 +440,12 @@ local servers = {
   rust_analyzer = {},
   -- tsserver = {},
 
+  ltex = {
+    ltex = {
+      language = "en-GB"
+    },
+  },
+
   lua_ls = {
     Lua = {
       workspace = { checkThirdParty = false },
@@ -461,6 +481,33 @@ mason_lspconfig.setup_handlers {
       settings = servers[server_name],
     }
   end,
+
+  ["ltex"] = function()
+  require("lspconfig").ltex.setup {
+    on_attach = function(client, bufnr)
+      require("ltex_extra").setup{
+        load_langs = { "en-GB" },
+        init_check = true,
+        path = "~/.config/nvim/ltx/",
+        log_level = "none",
+      }
+      on_attach(client, bufnr)
+    end,
+    settings = {
+      ltex = {
+       language = "en-GB"
+      }
+    }
+  }
+  end,
+
+  ["clangd"] = function()
+  require("lspconfig").clangd.setup {
+    on_attach = function(client, bufnr)
+      on_attach(client, bufnr)
+    end,
+  }
+  end
 }
 
 -- Turn on lsp status information
@@ -514,7 +561,7 @@ cmp.setup {
 require('lualine').setup {
   options = {
     icons_enabled = true,
-    theme = 'moonbow',
+    theme = 'onedark',
     component_separators = '|',
     section_separators = {left = '', right = ''},
   },
@@ -588,7 +635,7 @@ vim.lsp.handlers["$/progress"] = function(_, result, ctx)
 
  local notif_data = get_notif_data(client_id, result.token)
 
- if val.kind == "begin" then
+ if val.kind == "begin" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" then
    local message = format_message(val.message, val.percentage)
 
    notif_data.notification = vim.notify(message, "info", {
@@ -600,12 +647,12 @@ vim.lsp.handlers["$/progress"] = function(_, result, ctx)
 
    notif_data.spinner = 1
    update_spinner(client_id, result.token)
- elseif val.kind == "report" and notif_data then
+ elseif val.kind == "report" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" and notif_data then
    notif_data.notification = vim.notify(format_message(val.message, val.percentage), "info", {
      replace = notif_data.notification,
      hide_from_history = false,
    })
- elseif val.kind == "end" and notif_data then
+ elseif val.kind == "end" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" and notif_data then
    notif_data.notification =
      vim.notify(val.message and format_message(val.message) or "Complete", "info", {
        icon = "",
