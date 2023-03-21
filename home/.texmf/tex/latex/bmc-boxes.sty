@@ -1,0 +1,140 @@
+%══════════════════════════════════════════%
+%                                          %
+%                  BMC                     %
+%     A Bespoke, Multipurpose Class        %
+%       -- Boxes of Vaious Kinds --        %
+%                 -~=~-                    %
+%          Authored by tecosaur            %
+%                                          %
+%══════════════════════════════════════════%
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bmc-boxes}[2019/06/09 Fonts functionality used in the BMC class]
+
+\ifdefined\@bmc\else
+    \RequirePackage{bmc-fonts}
+    \RequirePackage{bmc-color}
+    \RequirePackage{bmc-ref}
+\fi
+
+\RequirePackage[many]{tcolorbox}
+\RequirePackage{interfaces-base}
+\LoadInterface{pgfkeys}
+\usetikzlibrary{calc}
+
+\tcbset{
+    bmcbox/.style={
+        enhanced,
+        % text
+        fonttitle=\large\fontfamily{\headingsFont}\fontseries{sb}\selectfont,
+        coltitle=text,
+        colback=infoBulleBackground,
+        colbacktitle=infoBulleBackground,
+        % frame
+        % frame hidden,
+        colframe=infoBulleBackground,
+        toprule=4pt,titlerule=0pt,bottomrule=0pt,rightrule=0pt,leftrule=0pt,
+        segmentation hidden,
+        sharpish corners,
+        overlay={%
+            \draw[line width=2.5pt,#1] (frame.north west)--(frame.south west);
+        },
+        % margins & padding
+        before skip=\baselineskip,
+        after skip=\baselineskip,
+        boxsep=2pt,
+        top=6pt,
+        bottom=4pt,
+        left=8pt,
+        right=6pt,
+        breakable,
+    },
+    bmcboxtitle/.style n args=3{
+        extras middle and last={%
+            top=20pt,
+            overlay={%
+                \draw[line width=2.5pt,#1] (frame.north west)--(frame.south west);
+                % \draw[line width=0.5pt,dashed,#1] (frame.north west)--(frame.north east);
+                \draw[] {([yshift=-12pt,xshift=4.5pt]frame.north west)} node[anchor=west] {#2};
+                \draw[] {([yshift=-12pt,xshift=-4.5pt]frame.north east)} node[anchor=east] {#3};
+            }
+        },
+    }
+}
+
+% Counter Reset
+%-------------------------------------------------------------------------------
+\pgfkeys{
+	/infoBulle/math/.cd,
+	counterReset/.store in=\infoBulle@mathCounterReset,
+	counterReset = section,
+}
+% Icon Radius
+%-------------------------------------------------------------------------------
+\pgfkeys{
+	/infoBulle/icon/.cd,
+	radius/.store as dimen
+}
+
+% Icon Shape
+%-------------------------------------------------------------------------------
+\DeclareDocumentCommand{\infoBulle@hexagon}{m m O{}}{
+	\fill [#3] ($ (#1) + (0:#2) $) -- ($ (#1) + (60:#2) $) -- ($ (#1) + (120:#2) $) -- ($ (#1) + (180:#2) $) -- ($ (#1) + (240:#2) $) -- ($ (#1) + (300:#2) $) -- cycle;
+}
+\pgfkeys{
+	/infoBulle/icon/.cd,
+	shape/.is choice,
+	shape/round/.style = {/infoBulle/icon/radius = 3.0mm, /infoBulle/icon/shapeCommand/.code n args = {3}{\fill[##3] (##1) circle (##2);}},
+	shape/hexagon/.style = {/infoBulle/icon/radius = 4mm, /infoBulle/icon/shapeCommand/.code n args = {3}{\infoBulle@hexagon{##1}{##2}[##3, rotate=90];}},
+	shape/round,
+}
+
+\DeclareDocumentCommand{\faAbstractIcon}{m m O{text=infoBulleBackground}}{%
+	\begin{tikzpicture}[inner sep=0mm, baseline=(iconText.base)]%
+		\coordinate (iconCenter) at (0,0);
+		\pgfkeys{/infoBulle/icon/shapeCommand={iconCenter}{\pgfkeysvalueof{/infoBulle/icon/radius}}{#1}}
+		\draw (iconCenter) node[text width=.6cm, anchor=center, align=center, font=\fontsize{.35cm}{.42cm}, #3] (iconText) {#2};
+	\end{tikzpicture}
+}
+
+\DeclareDocumentCommand{\newBmcBox}{m m m O{box} O{\faAngleRight}}{
+    \DeclareTColorBox[auto counter]{#1}{O{} O{} O{\thetcbcounter}}{
+        bmcbox={#2},bmcboxtitle={#2}{%
+            \faAbstractIcon{infoBulleBackground}{#5}[text=#2!70!page]%
+            \colorlet{inlinemath}{text!50!page}%
+            \color{text!50!page}\small\fontfamily{\headingsFont}\fontseries{mb}\selectfont%
+            \ifstrempty{##2}{#3~\thetcbcounter}{##2}%
+            \fontseries{tx}\selectfont%
+            \ifstrempty{##1}{}{\ifstrempty{##2}{}{: ##1}}%
+            \itshape\enspace continued%
+        }{\ifstrempty{##2}{}{\small\fontfamily{\headingsFont}\fontseries{tx}\selectfont\itshape%
+            \hfill\textcolor{text!50!page}{\thetcbcounter}}},
+        title={%
+            \faAbstractIcon{#2}{#5}~%
+            \colorlet{inlinemath}{text}%
+            \ifstrempty{##2}{#3~\thetcbcounter}{##2}%
+            \ifstrempty{##1}{}{: \fontseries{tx}\selectfont##1}%
+            \ifstrempty{##2}{}{\hfill\textcolor{text!50!page}{\thetcbcounter}}},
+        label=#4:##3,
+    }
+    \expandafter\newcommand\csname tcb@cnt@#1autorefname\endcsname{#3}
+}
+
+% \newBmcBox{<env name>}{<colour>}{<title name>}[<ref prefix>][<fa icon name>]
+\newBmcBox{example}{exampleColor}{Example}[eg][\faClipboard]
+\newBmcBox{critical}{criticalColor}{Critical}[crit][\faTimes]
+\newBmcBox{question}{questionColor}{Question}[qu][\faQuestion]
+\newBmcBox{info}{informationColor}{Information}[info][\faInfo]
+\newBmcBox{check}{checkColor}{Check}[check][\faCheck]
+\newBmcBox{warning}{warningColor}{Warning}[warn][\faExclamation]
+\newBmcBox{tip}{tipColor}{Tip}[tip][\faLightbulb]
+
+\newcommand{\bmcBoxMathIcon}{\fontsize{.6cm}{.72cm}\selectfont$\pi$}
+\newBmcBox{maths}{mathematicalColor}{Maths}[mth][\bmcBoxMathIcon]
+\newBmcBox{proof}{mathematicalColor}{Proof}[prf][\bmcBoxMathIcon]
+\newBmcBox{theorem}{mathematicalColor}{Theorem}[thr][\bmcBoxMathIcon]
+\newBmcBox{lemma}{mathematicalColor}{Lemma}[lem][\bmcBoxMathIcon]
+\newBmcBox{corollary}{mathematicalColor}{Corollary}[cor][\bmcBoxMathIcon]
+\newBmcBox{definition}{mathematicalColor}{Definition}[def][\bmcBoxMathIcon]
+\newBmcBox{axiom}{mathematicalColor}{Axiom}[axi][\bmcBoxMathIcon]
+\newBmcBox{proposition}{mathematicalColor}{Proposition}[prop][\bmcBoxMathIcon]

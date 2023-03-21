@@ -1,0 +1,1 @@
+{"rule":"WHITESPACE_RULE","sentence":"^\\QFind recently opened files\n\\<leader\\>\\<space\\>  Find existing buffers\n\\<leader\\>/ / Fuzzily search in current buffer\n\\<leader\\>sf Search Files\n\\<leader\\>sh Search Help\\E$"}

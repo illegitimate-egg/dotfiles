@@ -35,6 +35,8 @@ require('packer').startup(function(use)
     },
   }
 
+  use 'jay-babu/mason-nvim-dap.nvim'
+
   use { -- Autocompletion
     'hrsh7th/nvim-cmp',
     requires = { 'hrsh7th/cmp-nvim-lsp', 'L3MON4D3/LuaSnip', 'saadparwaiz1/cmp_luasnip' },
@@ -57,6 +59,14 @@ require('packer').startup(function(use)
   use 'tpope/vim-dispatch'
   use { "barreiroleo/ltex-extra.nvim" }
 
+  -- Markdown support 
+  --use({
+  --  "iamcco/markdown-preview.nvim",
+  --  run = function() vim.fn["mkdp#util#install"]() end,
+  --})
+
+  use({ "iamcco/markdown-preview.nvim", run = "cd app && npm install", setup = function() vim.g.mkdp_filetypes = { "markdown" } end, ft = { "markdown" }, })
+
   -- use {
   --   'Djancyp/better-comments.nvim',
   --   config = [[require('better-comment').Setup()]]
@@ -66,7 +76,7 @@ require('packer').startup(function(use)
   use 'mfussenegger/nvim-dap'
   use {
     "rcarriga/nvim-dap-ui",
-    requires = {"mfussenegger/nvim-dap"},
+    requires = { "mfussenegger/nvim-dap" },
     config = [[require("dapui").setup()]]
   }
   use 'rcarriga/nvim-notify'
@@ -89,20 +99,14 @@ require('packer').startup(function(use)
     'nvim-tree/nvim-tree.lua',
     requires = {
       'nvim-tree/nvim-web-devicons',
-    },
-    config = [[require("nvim-tree").setup()]]
+    }
   }
 
-  use {
-    "akinsho/toggleterm.nvim",
-    tag = '*',
-    config = [[require("toggleterm").setup{}]]
-  }
-
-  use 'arturgoms/lualine.nvim' -- Fancier statusline
+  use 'arturgoms/lualine.nvim'              -- Fancier statusline
   use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
-  use 'numToStr/Comment.nvim' -- "gc" to comment visual regions/lines
-  use 'tpope/vim-sleuth' -- Detect tabstop and shiftwidth automatically
+  use 'numToStr/Comment.nvim'               -- "gc" to comment visual regions/lines
+  use 'tpope/vim-sleuth'                    -- Detect tabstop and shiftwidth automatically
+
 
   use {
     "SmiteshP/nvim-navic",
@@ -213,7 +217,7 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 local navic = require("nvim-navic")
 
 navic.setup {
-icons = {
+  icons = {
     File = ' ',
     Module = ' ',
     Namespace = ' ',
@@ -303,15 +307,10 @@ vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc
 vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
 vim.keymap.set('n', '<leader>du', require('dapui').toggle, { desc = 'Start a dap session using [D]ap-[U]i' })
 
-local dap = require('dap')
-dap.configurations.c = {
-	{
-		type = 'executable';
-		request = 'launch';
-		name = "Launch file";
-		program = "./main";
-	},
-}
+
+
+local dap = require 'dap'
+local dapui = require 'dapui'
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
@@ -445,7 +444,6 @@ local servers = {
       language = "en-GB"
     },
   },
-
   lua_ls = {
     Lua = {
       workspace = { checkThirdParty = false },
@@ -483,32 +481,127 @@ mason_lspconfig.setup_handlers {
   end,
 
   ["ltex"] = function()
-  require("lspconfig").ltex.setup {
-    on_attach = function(client, bufnr)
-      require("ltex_extra").setup{
-        load_langs = { "en-GB" },
-        init_check = true,
-        path = "~/.config/nvim/ltx/",
-        log_level = "none",
-      }
-      on_attach(client, bufnr)
-    end,
-    settings = {
-      ltex = {
-       language = "en-GB"
+    require("lspconfig").ltex.setup {
+      on_attach = function(client, bufnr)
+        require("ltex_extra").setup {
+          load_langs = { "en-GB" },
+          init_check = true,
+          path = "~/.config/nvim/ltx/",
+          log_level = "none",
+        }
+        on_attach(client, bufnr)
+      end,
+      settings = {
+        ltex = {
+          language = "en-GB"
+        }
       }
     }
-  }
   end,
 
   ["clangd"] = function()
-  require("lspconfig").clangd.setup {
-    on_attach = function(client, bufnr)
-      on_attach(client, bufnr)
-    end,
-  }
+    require("lspconfig").clangd.setup {
+      on_attach = function(client, bufnr)
+        on_attach(client, bufnr)
+      end,
+    }
   end
 }
+
+local M = {}
+local api = require("nvim-tree.api")
+
+function M.on_attach(bufnr)
+   local function opts(desc)
+    return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+  end
+
+  vim.keymap.set('n', '<C-]>', api.tree.change_root_to_node,          opts('CD'))
+  vim.keymap.set('n', '<C-e>', api.node.open.replace_tree_buffer,     opts('Open: In Place'))
+  vim.keymap.set('n', '<C-k>', api.node.show_info_popup,              opts('Info'))
+  vim.keymap.set('n', '<C-r>', api.fs.rename_sub,                     opts('Rename: Omit Filename'))
+  vim.keymap.set('n', '<C-t>', api.node.open.tab,                     opts('Open: New Tab'))
+  vim.keymap.set('n', '<C-v>', api.node.open.vertical,                opts('Open: Vertical Split'))
+  vim.keymap.set('n', '<C-x>', api.node.open.horizontal,              opts('Open: Horizontal Split'))
+  vim.keymap.set('n', '<BS>',  api.node.navigate.parent_close,        opts('Close Directory'))
+  vim.keymap.set('n', '<CR>',  api.node.open.edit,                    opts('Open'))
+  vim.keymap.set('n', '<Tab>', api.node.open.preview,                 opts('Open Preview'))
+  vim.keymap.set('n', '>',     api.node.navigate.sibling.next,        opts('Next Sibling'))
+  vim.keymap.set('n', '<',     api.node.navigate.sibling.prev,        opts('Previous Sibling'))
+  vim.keymap.set('n', '.',     api.node.run.cmd,                      opts('Run Command'))
+  vim.keymap.set('n', '-',     api.tree.change_root_to_parent,        opts('Up'))
+  vim.keymap.set('n', 'a',     api.fs.create,                         opts('Create'))
+  vim.keymap.set('n', 'bmv',   api.marks.bulk.move,                   opts('Move Bookmarked'))
+  vim.keymap.set('n', 'B',     api.tree.toggle_no_buffer_filter,      opts('Toggle No Buffer'))
+  vim.keymap.set('n', 'c',     api.fs.copy.node,                      opts('Copy'))
+  vim.keymap.set('n', 'C',     api.tree.toggle_git_clean_filter,      opts('Toggle Git Clean'))
+  vim.keymap.set('n', '[c',    api.node.navigate.git.prev,            opts('Prev Git'))
+  vim.keymap.set('n', ']c',    api.node.navigate.git.next,            opts('Next Git'))
+  vim.keymap.set('n', 'd',     api.fs.remove,                         opts('Delete'))
+  vim.keymap.set('n', 'D',     api.fs.trash,                          opts('Trash'))
+  vim.keymap.set('n', 'E',     api.tree.expand_all,                   opts('Expand All'))
+  vim.keymap.set('n', 'e',     api.fs.rename_basename,                opts('Rename: Basename'))
+  vim.keymap.set('n', ']e',    api.node.navigate.diagnostics.next,    opts('Next Diagnostic'))
+  vim.keymap.set('n', '[e',    api.node.navigate.diagnostics.prev,    opts('Prev Diagnostic'))
+  vim.keymap.set('n', 'F',     api.live_filter.clear,                 opts('Clean Filter'))
+  vim.keymap.set('n', 'f',     api.live_filter.start,                 opts('Filter'))
+  vim.keymap.set('n', 'g?',    api.tree.toggle_help,                  opts('Help'))
+  vim.keymap.set('n', 'gy',    api.fs.copy.absolute_path,             opts('Copy Absolute Path'))
+  vim.keymap.set('n', 'H',     api.tree.toggle_hidden_filter,         opts('Toggle Dotfiles'))
+  vim.keymap.set('n', 'I',     api.tree.toggle_gitignore_filter,      opts('Toggle Git Ignore'))
+  vim.keymap.set('n', 'J',     api.node.navigate.sibling.last,        opts('Last Sibling'))
+  vim.keymap.set('n', 'K',     api.node.navigate.sibling.first,       opts('First Sibling'))
+  vim.keymap.set('n', 'm',     api.marks.toggle,                      opts('Toggle Bookmark'))
+  vim.keymap.set('n', 'o',     api.node.open.edit,                    opts('Open'))
+  vim.keymap.set('n', 'O',     api.node.open.no_window_picker,        opts('Open: No Window Picker'))
+  vim.keymap.set('n', 'p',     api.fs.paste,                          opts('Paste'))
+  vim.keymap.set('n', 'P',     api.node.navigate.parent,              opts('Parent Directory'))
+  vim.keymap.set('n', 'q',     api.tree.close,                        opts('Close'))
+  vim.keymap.set('n', 'r',     api.fs.rename,                         opts('Rename'))
+  vim.keymap.set('n', 'R',     api.tree.reload,                       opts('Refresh'))
+  vim.keymap.set('n', 's',     api.node.run.system,                   opts('Run System'))
+  vim.keymap.set('n', 'S',     api.tree.search_node,                  opts('Search'))
+  vim.keymap.set('n', 'U',     api.tree.toggle_custom_filter,         opts('Toggle Hidden'))
+  vim.keymap.set('n', 'W',     api.tree.collapse_all,                 opts('Collapse'))
+  vim.keymap.set('n', 'x',     api.fs.cut,                            opts('Cut'))
+  vim.keymap.set('n', 'y',     api.fs.copy.filename,                  opts('Copy Name'))
+  vim.keymap.set('n', 'Y',     api.fs.copy.relative_path,             opts('Copy Relative Path'))
+  vim.keymap.set('n', '<2-LeftMouse>',  api.node.open.edit,           opts('Open'))
+  vim.keymap.set('n', '<2-RightMouse>', api.tree.change_root_to_node, opts('CD'))
+end
+
+function M.print_node_path()
+      local node = api.tree.get_node_under_cursor()
+      print(node.absolute_path)
+end
+
+vim.keymap.set('n', '<leader>t', "<cmd>NvimTreeToggle<cr>")
+
+require("nvim-tree").setup({
+      on_attach = M.on_attach,
+      --
+})
+
+require('mason-nvim-dap').setup {
+  automatic_setup = true,
+  automatic_installtion = true,
+  ensure_installed = { "codelldb" },
+}
+
+require 'mason-nvim-dap'.setup_handlers {}
+
+vim.keymap.set('n', '<F5>', dap.continue)
+vim.keymap.set('n', '<F1>', dap.step_into)
+vim.keymap.set('n', '<F2>', dap.step_over)
+vim.keymap.set('n', '<F3>', dap.step_out)
+vim.keymap.set('n', '<leader>b', dap.toggle_breakpoint)
+vim.keymap.set('n', '<leader>B', function()
+  dap.set_breakpoint(vim.fn.input 'Breakpoint condition: ')
+end)
+
+dap.listeners.after.event_initialized['dapui_config'] = dapui.open
+dap.listeners.before.event_terminated['dapui_config'] = dapui.close
+dap.listeners.before.event_exited['dapui_config'] = dapui.close
 
 -- Turn on lsp status information
 -- require('fidget').setup()
@@ -563,15 +656,15 @@ require('lualine').setup {
     icons_enabled = true,
     theme = 'onedark',
     component_separators = '|',
-    section_separators = {left = '', right = ''},
+    section_separators = { left = '', right = '' },
   },
   sections = {
-    lualine_a = {'mode'},
-    lualine_b = {'branch', 'diff', 'diagnostics'},
-    lualine_c = {'filename', { navic.get_location, cond = navic.is_available }},
-    lualine_x = {'encoding', 'fileformat', 'filetype'},
-    lualine_y = {'progress'},
-    lualine_z = {'location'}
+    lualine_a = { 'mode' },
+    lualine_b = { 'branch', 'diff', 'diagnostics' },
+    lualine_c = { 'filename', { navic.get_location, cond = navic.is_available } },
+    lualine_x = { 'encoding', 'fileformat', 'filetype' },
+    lualine_y = { 'progress' },
+    lualine_z = { 'location' }
   },
 }
 
@@ -580,88 +673,88 @@ require('lualine').setup {
 local client_notifs = {}
 
 local function get_notif_data(client_id, token)
- if not client_notifs[client_id] then
-   client_notifs[client_id] = {}
- end
+  if not client_notifs[client_id] then
+    client_notifs[client_id] = {}
+  end
 
- if not client_notifs[client_id][token] then
-   client_notifs[client_id][token] = {}
- end
+  if not client_notifs[client_id][token] then
+    client_notifs[client_id][token] = {}
+  end
 
- return client_notifs[client_id][token]
+  return client_notifs[client_id][token]
 end
 
 
 local spinner_frames = { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" }
 
 local function update_spinner(client_id, token)
- local notif_data = get_notif_data(client_id, token)
+  local notif_data = get_notif_data(client_id, token)
 
- if notif_data.spinner then
-   local new_spinner = (notif_data.spinner + 1) % #spinner_frames
-   notif_data.spinner = new_spinner
+  if notif_data.spinner then
+    local new_spinner = (notif_data.spinner + 1) % #spinner_frames
+    notif_data.spinner = new_spinner
 
-   notif_data.notification = vim.notify(nil, nil, {
-     hide_from_history = true,
-     icon = spinner_frames[new_spinner],
-     replace = notif_data.notification,
-   })
+    notif_data.notification = vim.notify(nil, nil, {
+      hide_from_history = true,
+      icon = spinner_frames[new_spinner],
+      replace = notif_data.notification,
+    })
 
-   vim.defer_fn(function()
-     update_spinner(client_id, token)
-   end, 100)
- end
+    vim.defer_fn(function()
+      update_spinner(client_id, token)
+    end, 100)
+  end
 end
 
 local function format_title(title, client_name)
- return client_name .. (#title > 0 and ": " .. title or "")
+  return client_name .. (#title > 0 and ": " .. title or "")
 end
 
 local function format_message(message, percentage)
- return (percentage and percentage .. "%\t" or "") .. (message or "")
+  return (percentage and percentage .. "%\t" or "") .. (message or "")
 end
 
 -- LSP integration
 -- Make sure to also have the snippet with the common helper functions in your config!
 
 vim.lsp.handlers["$/progress"] = function(_, result, ctx)
- local client_id = ctx.client_id
+  local client_id = ctx.client_id
 
- local val = result.value
+  local val = result.value
 
- if not val.kind then
-   return
- end
+  if not val.kind then
+    return
+  end
 
- local notif_data = get_notif_data(client_id, result.token)
+  local notif_data = get_notif_data(client_id, result.token)
 
- if val.kind == "begin" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" then
-   local message = format_message(val.message, val.percentage)
+  if val.kind == "begin" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" then
+    local message = format_message(val.message, val.percentage)
 
-   notif_data.notification = vim.notify(message, "info", {
-     title = format_title(val.title, vim.lsp.get_client_by_id(client_id).name),
-     icon = spinner_frames[1],
-     timeout = false,
-     hide_from_history = false,
-   })
+    notif_data.notification = vim.notify(message, "info", {
+      title = format_title(val.title, vim.lsp.get_client_by_id(client_id).name),
+      icon = spinner_frames[1],
+      timeout = false,
+      hide_from_history = false,
+    })
 
-   notif_data.spinner = 1
-   update_spinner(client_id, result.token)
- elseif val.kind == "report" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" and notif_data then
-   notif_data.notification = vim.notify(format_message(val.message, val.percentage), "info", {
-     replace = notif_data.notification,
-     hide_from_history = false,
-   })
- elseif val.kind == "end" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" and notif_data then
-   notif_data.notification =
-     vim.notify(val.message and format_message(val.message) or "Complete", "info", {
-       icon = "",
-       replace = notif_data.notification,
-       timeout = 3000,
-     })
+    notif_data.spinner = 1
+    update_spinner(client_id, result.token)
+  elseif val.kind == "report" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" and notif_data then
+    notif_data.notification = vim.notify(format_message(val.message, val.percentage), "info", {
+      replace = notif_data.notification,
+      hide_from_history = false,
+    })
+  elseif val.kind == "end" and vim.lsp.get_client_by_id(client_id).name ~= "ltex" and notif_data then
+    notif_data.notification =
+        vim.notify(val.message and format_message(val.message) or "Complete", "info", {
+          icon = "",
+          replace = notif_data.notification,
+          timeout = 3000,
+        })
 
-   notif_data.spinner = nil
- end
+    notif_data.spinner = nil
+  end
 end
 
 -- table from lsp severity to vim severity.
@@ -672,9 +765,8 @@ local severity = {
   "info", -- map both hint and info to info?
 }
 vim.lsp.handlers["window/showMessage"] = function(err, method, params, client_id)
-             vim.notify(method.message, severity[params.type])
+  vim.notify(method.message, severity[params.type])
 end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
-

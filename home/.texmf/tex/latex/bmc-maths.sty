@@ -1,0 +1,107 @@
+%══════════════════════════════════════════%
+%                                          %
+%                  BMC                     %
+%     A Bespoke, Multipurpose Class        %
+%        -- Maths Functionality --         %
+%                 -~=~-                    %
+%          Authored by tecosaur            %
+%                                          %
+%══════════════════════════════════════════%
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{bmc-maths}[2019/06/09 Maths functionality used in the BMC class]
+
+\newif\ifbmc@nomathsfont
+\newif\ifbmc@plainmathsdd
+\bmc@nomathsfontfalse
+\bmc@plainmathsddfalse
+\DeclareOption{nofont}{\bmc@nomathsfonttrue}
+\DeclareOption{plaindd}{\bmc@plainmathsddtrue}
+\ProcessOptions\relax
+
+% various math packages
+\RequirePackage{amsmath,amssymb}
+\ifbmc@nomathsfont\else
+  \RequirePackage[varbb]{newpxmath}
+\fi
+\RequirePackage{xfrac}
+\RequirePackage[makeroom]{cancel}
+\RequirePackage{mathtools}
+
+% deliminators
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+\DeclarePairedDelimiter{\round}{\lfloor}{\rceil}
+% number sets
+\newcommand{\RR}[1][]{\ensuremath{\ifstrempty{#1}{\mathbb{R}}{\mathbb{R}^{#1}}}}
+\newcommand{\NN}[1][]{\ensuremath{\ifstrempty{#1}{\mathbb{N}}{\mathbb{N}^{#1}}}}
+\newcommand{\ZZ}[1][]{\ensuremath{\ifstrempty{#1}{\mathbb{Z}}{\mathbb{Z}^{#1}}}}
+\newcommand{\QQ}[1][]{\ensuremath{\ifstrempty{#1}{\mathbb{Q}}{\mathbb{Q}^{#1}}}}
+\newcommand{\CC}[1][]{\ensuremath{\ifstrempty{#1}{\mathbb{C}}{\mathbb{C}^{#1}}}}
+\newcommand{\PP}[1][]{\ensuremath{\ifstrempty{#1}{\mathbb{P}}{\mathbb{P}^{#1}}}}
+\newcommand{\HH}[1][]{\ensuremath{\ifstrempty{#1}{\mathbb{H}}{\mathbb{H}^{#1}}}}
+% expected value
+\newcommand{\EE}{\ensuremath{\mathbb{E}}}
+
+% commonly used macros
+%  - differentials
+\ifbmc@plainmathsdd
+  \newcommand{\dd}[1][]{\ensuremath{\,\mathsl{d}^{#1}}}
+\else
+  \newsavebox\diffdbox
+  \newcommand{\slantedromand}{{\mathpalette\makesl{d}}}
+  \newcommand{\makesl}[2]{%
+    \begingroup
+    \sbox{\diffdbox}{$\mathsurround=0pt#1\mathrm{#2}$}%
+    \pdfsave
+    \pdfsetmatrix{1 0 0.2 1}%
+    \rlap{\usebox{\diffdbox}}%
+    \pdfrestore
+    \hskip\wd\diffdbox
+    \endgroup
+  }
+  \newcommand{\dd}[1][]{\ensuremath{\mathop{}\!\ifstrempty{#1}{%
+        \slantedromand\@ifnextchar^{\hspace{0.2ex}}{\hspace{0.1ex}}}%
+      {\slantedromand\hspace{0.2ex}^{#1}}}}
+\fi
+\ProvideDocumentCommand\dv{o m g}{%
+  \ensuremath{%
+    \IfValueTF{#3}{%
+      \IfNoValueTF{#1}{%
+        \frac{\dd #2}{\dd #3}%
+      }{%
+        \frac{\dd^{#1} #2}{\dd #3^{#1}}%
+      }%
+    }{%
+      \IfNoValueTF{#1}{%
+        \frac{\dd}{\dd #2}%
+      }{%
+        \frac{\dd^{#1}}{\dd #2^{#1}}%
+      }%
+    }%
+  }%
+}
+\providecommand*{\pdv}[3][]{\frac{\partial^{#1}#2}{\partial#3^{#1}}}
+%  - others
+\DeclareMathOperator{\Lap}{\mathcal{L}}
+\DeclareMathOperator{\Var}{Var} % varience
+\DeclareMathOperator{\Cov}{Cov} % covarience
+\DeclareMathOperator{\E}{E} % expected
+
+% Since the amsthm package isn't loaded
+\newcommand*{\qed}{\hfill\ensuremath{\blacksquare}}
+\newcommand*{\qedhere}{\hfill\ensuremath{\square}}
+
+% I prefer the slanted \leq
+\let\oldleq\leq % save them in case they're every wanted
+\let\oldgeq\geq
+\renewcommand{\leq}{\leqslant}
+\renewcommand{\geq}{\geqslant}
+
+% redefine matrix env to allow for alignment, use r as default
+\renewcommand*\env@matrix[1][r]{\hskip -\arraycolsep
+    \let\@ifnextchar\new@ifnextchar
+    \array{*\c@MaxMatrixCols #1}}
