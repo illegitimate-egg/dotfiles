@@ -79,14 +79,31 @@ require('packer').startup(function(use)
     requires = { "mfussenegger/nvim-dap" },
     config = [[require("dapui").setup()]]
   }
-  use 'rcarriga/nvim-notify'
+  -- use 'rcarriga/nvim-notify'
+
+  use({
+    "utilyre/barbecue.nvim",
+    tag = "*",
+    requires = {
+      "SmiteshP/nvim-navic",
+      "nvim-tree/nvim-web-devicons", -- optional dependency
+    },
+    after = "nvim-web-devicons", -- keep this if you're using NvChad
+    config = function()
+      require("barbecue").setup({
+        setup_navic = false
+      })
+    end,
+  })
 
   -- Git related plugins
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
   use 'lewis6991/gitsigns.nvim'
   -- use { "arturgoms/moonbow.nvim" }
-  use 'navarasu/onedark.nvim' -- Theme inspired by Atom RIP
+  use {
+    'navarasu/onedark.nvim',
+  } -- Theme inspired by Atom RIP
   -- use 'ellisonleao/gruvbox.nvim'
 
   --use 'ayu-theme/ayu-vim'
@@ -102,11 +119,16 @@ require('packer').startup(function(use)
     }
   }
 
+  use {"akinsho/toggleterm.nvim", tag = '*', config = function()
+    require("toggleterm").setup()
+  end}
+
   use 'arturgoms/lualine.nvim'              -- Fancier statusline
   use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
   use 'numToStr/Comment.nvim'               -- "gc" to comment visual regions/lines
   use 'tpope/vim-sleuth'                    -- Detect tabstop and shiftwidth automatically
 
+  use {'akinsho/bufferline.nvim', tag = "v3.*", requires = 'nvim-tree/nvim-web-devicons'}
 
   use {
     "SmiteshP/nvim-navic",
@@ -183,6 +205,14 @@ vim.o.termguicolors = true
 -- require("gruvbox").setup({
 --   contrast = "hard"
 -- })
+
+require('onedark').setup {
+  style = 'darker'
+}
+require('onedark').load()
+
+require("bufferline").setup{}
+
 vim.cmd [[colorscheme onedark]]
 
 -- Set completeopt to have a better completion experience
@@ -251,8 +281,8 @@ navic.setup {
 -- Enable Comment.nvim
 require('Comment').setup()
 
-vim.notify = require("notify")
-require('notify').setup({})
+--vim.notify = require("notify")
+--require('notify').setup({})
 
 -- Enable `lukas-reineke/indent-blankline.nvim`
 -- See `:help indent_blankline.txt`
@@ -286,6 +316,10 @@ require('telescope').setup {
   },
 }
 
+require("toggleterm").setup{
+  open_mapping = [[<c-\>]]
+}
+
 -- Enable telescope fzf native, if installed
 pcall(require('telescope').load_extension, 'fzf')
 
@@ -306,8 +340,6 @@ vim.keymap.set('n', '<leader>sw', require('telescope.builtin').grep_string, { de
 vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
 vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
 vim.keymap.set('n', '<leader>du', require('dapui').toggle, { desc = 'Start a dap session using [D]ap-[U]i' })
-
-
 
 local dap = require 'dap'
 local dapui = require 'dapui'
@@ -384,7 +416,9 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist)
 -- LSP settings.
 --  This function gets run when an LSP connects to a particular buffer.
 local on_attach = function(client, bufnr)
-  navic.attach(client, bufnr)
+  if client.server_capabilities["documentSymbolProvider"] then
+    require("nvim-navic").attach(client, bufnr)
+  end
   -- NOTE: Remember that lua is a real programming language, and as such it is possible
   -- to define small helper and utility functions so you don't have to repeat yourself
   -- many times.
@@ -434,10 +468,15 @@ end
 --  the `settings` field of the server config. You must look up that documentation yourself.
 local servers = {
   clangd = {},
+  texlab = {},
+  cssls = {},
+  html = {},
+  jsonls = {},
+  denols = {},
   -- gopls = {},
   -- pyright = {},
   rust_analyzer = {},
-  -- tsserver = {},
+  tsserver = {},
 
   ltex = {
     ltex = {
@@ -576,6 +615,8 @@ function M.print_node_path()
 end
 
 vim.keymap.set('n', '<leader>t', "<cmd>NvimTreeToggle<cr>")
+vim.keymap.set('n', '<leader>n', "<cmd>bnext<cr>")
+vim.keymap.set('n', '<leader>p', "<cmd>bprevious<cr>")
 
 require("nvim-tree").setup({
       on_attach = M.on_attach,
@@ -665,7 +706,7 @@ require('lualine').setup {
   sections = {
     lualine_a = { 'mode' },
     lualine_b = { 'branch', 'diff', 'diagnostics' },
-    lualine_c = { 'filename', { navic.get_location, cond = navic.is_available } },
+    lualine_c = { 'filename' },
     lualine_x = { 'encoding', 'fileformat', 'filetype' },
     lualine_y = { 'progress' },
     lualine_z = { 'location' }
