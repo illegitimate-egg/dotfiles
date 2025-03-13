@@ -1,10 +1,16 @@
 return {
   -- { "sjl/badwolf" },
+  -- {
+  --   "briones-gabriel/darcula-solid.nvim",
+  --   dependencies = {
+  --     "rktjmp/lush.nvim",
+  --   },
+  -- },
   {
-    "briones-gabriel/darcula-solid.nvim",
-    dependencies = {
-      "rktjmp/lush.nvim",
-    },
+    "ficcdaf/ashen.nvim",
+    tag = "*",
+    lazy = false,
+    priority = 1000,
   },
 
   -- Load that hot beast
@@ -12,7 +18,8 @@ return {
     "LazyVim/LazyVim",
     opts = {
       -- colorscheme = "badwolf",
-      colorscheme = "darcula-solid",
+      -- colorscheme = "darcula-solid",
+      colorscheme = "ashen",
     },
   },
 
